@@ -5,3 +5,6 @@ server:
   readTimeout: 60s
   writeTimeout: 30s
   idleTimeout: 240s
+
+workers:
+  maxWorkers: 20

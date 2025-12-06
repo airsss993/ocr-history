@@ -12,6 +12,7 @@ import (
 	"github.com/airsss993/ocr-history/internal/handlers"
 	"github.com/airsss993/ocr-history/internal/repository"
 	"github.com/airsss993/ocr-history/internal/server"
+	"github.com/airsss993/ocr-history/internal/services"
 	"github.com/airsss993/ocr-history/pkg/logger"
 )
 
@@ -21,7 +22,8 @@ func Run() {
 		logger.Fatal(err)
 	}
 
-	_ = repository.NewTesseractRepository("rus")
+	tesseractRepo := repository.NewTesseractRepository("rus")
+	_ = services.NewOCRService(tesseractRepo, cfg.Workers.MaxWorkers)
 
 	handler := handlers.NewHandler(cfg)
 

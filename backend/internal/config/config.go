@@ -11,7 +11,8 @@ import (
 
 type (
 	Config struct {
-		Server Server
+		Server  Server
+		Workers Workers
 	}
 
 	Server struct {
@@ -21,6 +22,10 @@ type (
 		WriteTimeout   time.Duration
 		MaxHeaderBytes int
 		IdleTimeout    time.Duration
+	}
+
+	Workers struct {
+		MaxWorkers int
 	}
 )
 
