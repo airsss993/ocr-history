@@ -10,6 +10,7 @@ import (
 
 	"github.com/airsss993/ocr-history/internal/config"
 	"github.com/airsss993/ocr-history/internal/handlers"
+	"github.com/airsss993/ocr-history/internal/repository"
 	"github.com/airsss993/ocr-history/internal/server"
 	"github.com/airsss993/ocr-history/pkg/logger"
 )
@@ -19,6 +20,8 @@ func Run() {
 	if err != nil {
 		logger.Fatal(err)
 	}
+
+	_ = repository.NewTesseractRepository("rus")
 
 	handler := handlers.NewHandler(cfg)
 

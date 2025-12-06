@@ -20,6 +20,7 @@ type (
 		ReadTimeout    time.Duration
 		WriteTimeout   time.Duration
 		MaxHeaderBytes int
+		IdleTimeout    time.Duration
 	}
 )
 
