@@ -41,6 +41,7 @@ type (
 		YandexModel           string   `mapstructure:"yandexModel"` // "page" или "handwritten"
 		GoogleCredentialsPath string   `mapstructure:"googleCredentialsPath"`
 		GeminiAPIKey          string   `mapstructure:"geminiApiKey"`
+		GeminiAuthKey         string   `mapstructure:"geminiAuthKey"`
 		GeminiModel           string   `mapstructure:"geminiModel"` // "gemini-2.0-flash-exp", "gemini-1.5-pro" и т.д.
 	}
 
@@ -82,6 +83,9 @@ func Init() (*Config, error) {
 	if apiKey := viper.GetString("GEMINI_API_KEY"); apiKey != "" {
 		cfg.OCR.GeminiAPIKey = apiKey
 	}
+	if authKey := viper.GetString("GEMINI_AUTH_KEY"); authKey != "" {
+		cfg.OCR.GeminiAuthKey = authKey
+	}
 	if model := viper.GetString("GEMINI_MODEL"); model != "" {
 		cfg.OCR.GeminiModel = model
 	}
@@ -100,6 +104,7 @@ func parseConfigFile(folder string) error {
 	viper.BindEnv("YANDEX_FOLDER_ID")
 	viper.BindEnv("GOOGLE_CREDENTIALS_PATH")
 	viper.BindEnv("GEMINI_API_KEY")
+	viper.BindEnv("GEMINI_AUTH_KEY")
 	viper.BindEnv("GEMINI_MODEL")
 
 	viper.AutomaticEnv()

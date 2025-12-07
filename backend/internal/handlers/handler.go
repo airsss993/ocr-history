@@ -58,12 +58,11 @@ func (h *Handler) readinessCheck(c *gin.Context) {
 }
 
 func (h *Handler) handleGeminiOCR(c *gin.Context) {
-	// Получаем API ключ из header
-	apiKey := c.GetHeader("X-Gemini-API-Key")
-	if apiKey == "" {
+	authKey := c.GetHeader("X-Gemini-API-Key")
+	if authKey == "" || authKey != h.cfg.OCR.GeminiAuthKey {
 		c.JSON(http.StatusUnauthorized, domain.ErrorResponse{
 			Error:   "authentication_error",
-			Message: "Gemini API key is required in X-Gemini-API-Key header",
+			Message: "Invalid or missing authentication key",
 		})
 		return
 	}
@@ -94,8 +93,7 @@ func (h *Handler) handleGeminiOCR(c *gin.Context) {
 		return
 	}
 
-	// Создаем Gemini репозиторий с предоставленным API ключом (всегда используем gemini-3-pro-preview)
-	geminiRepo := repository.NewGeminiRepository(apiKey, "gemini-3-pro-preview")
+	geminiRepo := repository.NewGeminiRepository(h.cfg.OCR.GeminiAPIKey, h.cfg.OCR.GeminiModel)
 	geminiService := services.NewOCRService(geminiRepo, h.cfg.Workers.MaxWorkers)
 
 	// Обрабатываем изображения
