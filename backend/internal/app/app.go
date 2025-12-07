@@ -35,6 +35,9 @@ func Run() {
 	case "google":
 		logger.Info("Using Google Vision OCR provider")
 		ocrRepo = repository.NewGoogleVisionRepository(cfg.OCR.GoogleCredentialsPath)
+	case "gemini":
+		logger.Info(fmt.Sprintf("Using Gemini LLM OCR provider (model: %s)", cfg.OCR.GeminiModel))
+		ocrRepo = repository.NewGeminiRepository(cfg.OCR.GeminiAPIKey, cfg.OCR.GeminiModel)
 	case "tesseract":
 		fallthrough
 	default:

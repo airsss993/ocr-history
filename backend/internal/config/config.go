@@ -31,7 +31,7 @@ type (
 	}
 
 	OCR struct {
-		Provider               string   `mapstructure:"provider"` // "tesseract", "yandex" или "google"
+		Provider               string   `mapstructure:"provider"` // "tesseract", "yandex", "google" или "gemini"
 		MaxImagesPerRequest    int      `mapstructure:"maxImagesPerRequest"`
 		MaxImageSizeMB         int      `mapstructure:"maxImageSizeMB"`
 		SupportedFormats       []string `mapstructure:"supportedFormats"`
@@ -40,6 +40,8 @@ type (
 		YandexFolderID         string   `mapstructure:"yandexFolderId"`
 		YandexModel            string   `mapstructure:"yandexModel"` // "page" или "handwritten"
 		GoogleCredentialsPath  string   `mapstructure:"googleCredentialsPath"`
+		GeminiAPIKey           string   `mapstructure:"geminiApiKey"`
+		GeminiModel            string   `mapstructure:"geminiModel"` // "gemini-2.0-flash-exp", "gemini-1.5-pro" и т.д.
 	}
 
 	RateLimit struct {
@@ -77,6 +79,12 @@ func Init() (*Config, error) {
 	}
 	if credPath := viper.GetString("GOOGLE_CREDENTIALS_PATH"); credPath != "" {
 		cfg.OCR.GoogleCredentialsPath = credPath
+	}
+	if apiKey := viper.GetString("GEMINI_API_KEY"); apiKey != "" {
+		cfg.OCR.GeminiAPIKey = apiKey
+	}
+	if model := viper.GetString("GEMINI_MODEL"); model != "" {
+		cfg.OCR.GeminiModel = model
 	}
 
 	return &cfg, nil
