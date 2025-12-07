@@ -1,6 +1,7 @@
 package services
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"mime/multipart"
@@ -98,7 +99,14 @@ func (s *OCRService) processImage(file *multipart.FileHeader, maxSizeMB int, sup
 		return result
 	}
 
-	result.Text = text
+	var jsonCheck interface{}
+	if json.Unmarshal([]byte(text), &jsonCheck) == nil {
+		result.Text = json.RawMessage(text)
+	} else {
+		textJSON, _ := json.Marshal(text)
+		result.Text = json.RawMessage(textJSON)
+	}
+
 	return result
 }
 

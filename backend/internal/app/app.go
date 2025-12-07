@@ -10,9 +10,7 @@ import (
 
 	"github.com/airsss993/ocr-history/internal/config"
 	"github.com/airsss993/ocr-history/internal/handlers"
-	"github.com/airsss993/ocr-history/internal/repository"
 	"github.com/airsss993/ocr-history/internal/server"
-	"github.com/airsss993/ocr-history/internal/services"
 	"github.com/airsss993/ocr-history/pkg/logger"
 )
 
@@ -22,32 +20,25 @@ func Run() {
 		logger.Fatal(err)
 	}
 
-	// Выбираем OCR провайдер на основе конфигурации
-	var ocrRepo repository.OCRRepository
-	switch cfg.OCR.Provider {
-	case "yandex":
-		logger.Info(fmt.Sprintf("Using Yandex OCR provider (model: %s)", cfg.OCR.YandexModel))
-		ocrRepo = repository.NewYandexOCRRepository(
-			cfg.OCR.YandexAPIKey,
-			cfg.OCR.YandexFolderID,
-			cfg.OCR.YandexModel,
-		)
-	case "google":
-		logger.Info("Using Google Vision OCR provider")
-		ocrRepo = repository.NewGoogleVisionRepository(cfg.OCR.GoogleCredentialsPath)
-	case "gemini":
-		logger.Info(fmt.Sprintf("Using Gemini LLM OCR provider (model: %s)", cfg.OCR.GeminiModel))
-		ocrRepo = repository.NewGeminiRepository(cfg.OCR.GeminiAPIKey, cfg.OCR.GeminiModel)
-	case "tesseract":
-		fallthrough
-	default:
-		logger.Info("Using Tesseract OCR provider")
-		ocrRepo = repository.NewTesseractRepository(cfg.OCR.Languages...)
+	logger.Info("Starting OCR backend with multi-provider support")
+	logger.Info("Available endpoints: /api/v1/ocr/gemini, /api/v1/ocr/yandex")
+
+	// Логируем конфигурацию Yandex (без полных ключей для безопасности)
+	if cfg.OCR.YandexAPIKey != "" {
+		logger.Info(fmt.Sprintf("Yandex API Key: configured (length: %d)", len(cfg.OCR.YandexAPIKey)))
+	} else {
+		logger.Warn("Yandex API Key: not configured")
 	}
 
-	ocrService := services.NewOCRService(ocrRepo, cfg.Workers.MaxWorkers)
+	if cfg.OCR.YandexFolderID != "" {
+		logger.Info(fmt.Sprintf("Yandex Folder ID: %s", cfg.OCR.YandexFolderID))
+	} else {
+		logger.Warn("Yandex Folder ID: not configured")
+	}
 
-	handler := handlers.NewHandler(cfg, ocrService)
+	logger.Info(fmt.Sprintf("Yandex Model: %s", cfg.OCR.YandexModel))
+
+	handler := handlers.NewHandler(cfg)
 
 	router := handler.Init()
 

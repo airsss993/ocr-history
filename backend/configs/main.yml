@@ -10,22 +10,20 @@ workers:
   maxWorkers: 20
 
 ocr:
-  provider: "tesseract"  # "tesseract", "yandex", "google" или "gemini"
+  provider: "yandex"
   maxImagesPerRequest: 10
   maxImageSizeMB: 10
   supportedFormats: ["jpg", "jpeg", "png", "webp"]
   languages: ["rus"]
 
-  # Для Yandex OCR (получить ключи: https://cloud.yandex.ru/docs/iam/concepts/authorization/api-key)
-  yandexApiKey: ""      # Установите в переменную окружения YANDEX_API_KEY
-  yandexFolderId: ""    # Установите в переменную окружения YANDEX_FOLDER_ID
-  yandexModel: "page"   # "page" для печатного текста, "handwritten" для рукописного
+  yandexApiKey: ""
+  yandexFolderId: ""
+  yandexModel: "page"
 
-  # Для Google Vision OCR (получить service account JSON: https://console.cloud.google.com/iam-admin/serviceaccounts)
-  googleCredentialsPath: "./google-credentials.json"  # Путь к JSON файлу service account
+  googleCredentialsPath: "./google-credentials.json"
 
-  # Для Gemini LLM OCR (получить API ключ: https://ai.google.dev/gemini-api/docs/api-key)
-  geminiApiKey: ""  # Установите в переменную окружения GEMINI_API_KEY
+
+  geminiApiKey: ""
   geminiModel: "gemini-3-pro-preview"  # "gemini-3-pro-preview", "gemini-2.0-flash-exp", "gemini-1.5-pro"
 
 rateLimit:

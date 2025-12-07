@@ -1,11 +1,14 @@
 package domain
 
-import "time"
+import (
+	"encoding/json"
+	"time"
+)
 
 type OCRResult struct {
-	Filename string `json:"filename"`
-	Text     string `json:"text"`
-	Error    string `json:"error,omitempty"`
+	Filename string          `json:"filename"`
+	Text     json.RawMessage `json:"text"`
+	Error    string          `json:"error,omitempty"`
 }
 
 type OCRResponse struct {

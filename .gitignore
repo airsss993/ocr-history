@@ -121,3 +121,4 @@ app.*.symbols
 /backend/.idea
 /.idea
 *.json
+backend/.env

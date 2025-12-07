@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strings"
 
 	"github.com/airsss993/ocr-history/pkg/logger"
 )
@@ -182,7 +181,7 @@ func (r *YandexOCRRepository) RecognizeFromBytes(data []byte) (string, error) {
 		return "", err
 	}
 
-	// Парсим ответ
+	// Парсим ответ для проверки
 	var ocrResp yandexOCRResponse
 	if err := json.Unmarshal(body, &ocrResp); err != nil {
 		err := fmt.Errorf("failed to unmarshal response: %w", err)
@@ -196,27 +195,6 @@ func (r *YandexOCRRepository) RecognizeFromBytes(data []byte) (string, error) {
 		return "", nil
 	}
 
-	// Извлекаем текст
-	text := extractTextFromYandexResponse(&ocrResp)
-	return text, nil
-}
-
-func extractTextFromYandexResponse(resp *yandexOCRResponse) string {
-	if resp.Result == nil || resp.Result.TextAnnotation == nil {
-		return ""
-	}
-
-	var lines []string
-
-	// Проходим по всем блокам текста
-	for _, block := range resp.Result.TextAnnotation.Blocks {
-		// Проходим по всем строкам в блоке
-		for _, line := range block.Lines {
-			if line.Text != "" {
-				lines = append(lines, line.Text)
-			}
-		}
-	}
-
-	return strings.Join(lines, "\n")
+	// Возвращаем полный JSON ответ от Yandex
+	return string(body), nil
 }

@@ -31,17 +31,17 @@ type (
 	}
 
 	OCR struct {
-		Provider               string   `mapstructure:"provider"` // "tesseract", "yandex", "google" или "gemini"
-		MaxImagesPerRequest    int      `mapstructure:"maxImagesPerRequest"`
-		MaxImageSizeMB         int      `mapstructure:"maxImageSizeMB"`
-		SupportedFormats       []string `mapstructure:"supportedFormats"`
-		Languages              []string `mapstructure:"languages"`
-		YandexAPIKey           string   `mapstructure:"yandexApiKey"`
-		YandexFolderID         string   `mapstructure:"yandexFolderId"`
-		YandexModel            string   `mapstructure:"yandexModel"` // "page" или "handwritten"
-		GoogleCredentialsPath  string   `mapstructure:"googleCredentialsPath"`
-		GeminiAPIKey           string   `mapstructure:"geminiApiKey"`
-		GeminiModel            string   `mapstructure:"geminiModel"` // "gemini-2.0-flash-exp", "gemini-1.5-pro" и т.д.
+		Provider              string   `mapstructure:"provider"` // "yandex", "google" или "gemini"
+		MaxImagesPerRequest   int      `mapstructure:"maxImagesPerRequest"`
+		MaxImageSizeMB        int      `mapstructure:"maxImageSizeMB"`
+		SupportedFormats      []string `mapstructure:"supportedFormats"`
+		Languages             []string `mapstructure:"languages"`
+		YandexAPIKey          string   `mapstructure:"yandexApiKey"`
+		YandexFolderID        string   `mapstructure:"yandexFolderId"`
+		YandexModel           string   `mapstructure:"yandexModel"` // "page" или "handwritten"
+		GoogleCredentialsPath string   `mapstructure:"googleCredentialsPath"`
+		GeminiAPIKey          string   `mapstructure:"geminiApiKey"`
+		GeminiModel           string   `mapstructure:"geminiModel"` // "gemini-2.0-flash-exp", "gemini-1.5-pro" и т.д.
 	}
 
 	RateLimit struct {
@@ -67,7 +67,6 @@ func Init() (*Config, error) {
 		return nil, fmt.Errorf("failed to unmarshal configuration: %w", err)
 	}
 
-	// Переопределяем из переменных окружения если они установлены
 	if provider := viper.GetString("OCR_PROVIDER"); provider != "" {
 		cfg.OCR.Provider = provider
 	}
@@ -94,6 +93,14 @@ func parseConfigFile(folder string) error {
 	viper.AddConfigPath(folder)
 	viper.SetConfigName("main")
 	viper.SetConfigType("yml")
+
+	// Явно привязываем переменные окружения
+	viper.BindEnv("OCR_PROVIDER")
+	viper.BindEnv("YANDEX_API_KEY")
+	viper.BindEnv("YANDEX_FOLDER_ID")
+	viper.BindEnv("GOOGLE_CREDENTIALS_PATH")
+	viper.BindEnv("GEMINI_API_KEY")
+	viper.BindEnv("GEMINI_MODEL")
 
 	viper.AutomaticEnv()
 
