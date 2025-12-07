@@ -11,8 +11,10 @@ import (
 
 type (
 	Config struct {
-		Server  Server
-		Workers Workers
+		Server    Server
+		Workers   Workers
+		OCR       OCR
+		RateLimit RateLimit
 	}
 
 	Server struct {
@@ -26,6 +28,23 @@ type (
 
 	Workers struct {
 		MaxWorkers int
+	}
+
+	OCR struct {
+		Provider               string   `mapstructure:"provider"` // "tesseract", "yandex" или "google"
+		MaxImagesPerRequest    int      `mapstructure:"maxImagesPerRequest"`
+		MaxImageSizeMB         int      `mapstructure:"maxImageSizeMB"`
+		SupportedFormats       []string `mapstructure:"supportedFormats"`
+		Languages              []string `mapstructure:"languages"`
+		YandexAPIKey           string   `mapstructure:"yandexApiKey"`
+		YandexFolderID         string   `mapstructure:"yandexFolderId"`
+		YandexModel            string   `mapstructure:"yandexModel"` // "page" или "handwritten"
+		GoogleCredentialsPath  string   `mapstructure:"googleCredentialsPath"`
+	}
+
+	RateLimit struct {
+		MaxConcurrentUsers int `mapstructure:"maxConcurrentUsers"`
+		RequestsPerMinute  int `mapstructure:"requestsPerMinute"`
 	}
 )
 
@@ -44,6 +63,20 @@ func Init() (*Config, error) {
 	if err := viper.Unmarshal(&cfg); err != nil {
 		logger.Error(err)
 		return nil, fmt.Errorf("failed to unmarshal configuration: %w", err)
+	}
+
+	// Переопределяем из переменных окружения если они установлены
+	if provider := viper.GetString("OCR_PROVIDER"); provider != "" {
+		cfg.OCR.Provider = provider
+	}
+	if apiKey := viper.GetString("YANDEX_API_KEY"); apiKey != "" {
+		cfg.OCR.YandexAPIKey = apiKey
+	}
+	if folderID := viper.GetString("YANDEX_FOLDER_ID"); folderID != "" {
+		cfg.OCR.YandexFolderID = folderID
+	}
+	if credPath := viper.GetString("GOOGLE_CREDENTIALS_PATH"); credPath != "" {
+		cfg.OCR.GoogleCredentialsPath = credPath
 	}
 
 	return &cfg, nil

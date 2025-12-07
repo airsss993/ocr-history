@@ -1,10 +1,29 @@
 server:
   host: "0.0.0.0"
   port: 8100
-  maxHeaderBytes: 1
-  readTimeout: 60s
-  writeTimeout: 30s
+  maxHeaderBytes: 15
+  readTimeout: 120s
+  writeTimeout: 120s
   idleTimeout: 240s
 
 workers:
   maxWorkers: 20
+
+ocr:
+  provider: "tesseract"  # "tesseract", "yandex" или "google"
+  maxImagesPerRequest: 10
+  maxImageSizeMB: 10
+  supportedFormats: ["jpg", "jpeg", "png", "webp"]
+  languages: ["rus"]
+
+  # Для Yandex OCR (получить ключи: https://cloud.yandex.ru/docs/iam/concepts/authorization/api-key)
+  yandexApiKey: ""      # Установите в переменную окружения YANDEX_API_KEY
+  yandexFolderId: ""    # Установите в переменную окружения YANDEX_FOLDER_ID
+  yandexModel: "page"   # "page" для печатного текста, "handwritten" для рукописного
+
+  # Для Google Vision OCR (получить service account JSON: https://console.cloud.google.com/iam-admin/serviceaccounts)
+  googleCredentialsPath: "./google-credentials.json"  # Путь к JSON файлу service account
+
+rateLimit:
+  maxConcurrentUsers: 30
+  requestsPerMinute: 60

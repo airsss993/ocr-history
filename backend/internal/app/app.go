@@ -22,10 +22,29 @@ func Run() {
 		logger.Fatal(err)
 	}
 
-	tesseractRepo := repository.NewTesseractRepository("rus")
-	_ = services.NewOCRService(tesseractRepo, cfg.Workers.MaxWorkers)
+	// Выбираем OCR провайдер на основе конфигурации
+	var ocrRepo repository.OCRRepository
+	switch cfg.OCR.Provider {
+	case "yandex":
+		logger.Info(fmt.Sprintf("Using Yandex OCR provider (model: %s)", cfg.OCR.YandexModel))
+		ocrRepo = repository.NewYandexOCRRepository(
+			cfg.OCR.YandexAPIKey,
+			cfg.OCR.YandexFolderID,
+			cfg.OCR.YandexModel,
+		)
+	case "google":
+		logger.Info("Using Google Vision OCR provider")
+		ocrRepo = repository.NewGoogleVisionRepository(cfg.OCR.GoogleCredentialsPath)
+	case "tesseract":
+		fallthrough
+	default:
+		logger.Info("Using Tesseract OCR provider")
+		ocrRepo = repository.NewTesseractRepository(cfg.OCR.Languages...)
+	}
 
-	handler := handlers.NewHandler(cfg)
+	ocrService := services.NewOCRService(ocrRepo, cfg.Workers.MaxWorkers)
+
+	handler := handlers.NewHandler(cfg, ocrService)
 
 	router := handler.Init()
 

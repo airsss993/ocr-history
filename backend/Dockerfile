@@ -16,8 +16,6 @@ RUN go mod download
 COPY . .
 
 ENV CGO_ENABLED=1
-ENV GOOS=linux
-ENV GOARCH=arm64
 
 RUN go build -o ocr-backend ./cmd/app
 
