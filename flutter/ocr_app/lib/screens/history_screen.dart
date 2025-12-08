@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/history_entry.dart';
 import '../services/history_service.dart';
-import '../widgets/image_with_overlay.dart';
+import '../widgets/image_viewer_dialog.dart';
 import '../widgets/ocr_text_display.dart';
 
 class HistoryScreen extends StatefulWidget {
@@ -182,8 +182,20 @@ class HistoryDetailScreen extends StatelessWidget {
 
   const HistoryDetailScreen({super.key, required this.entry});
 
+  void _openImageViewer(BuildContext context) {
+    if (entry.ocrResult.textAnnotation != null) {
+      ImageViewerDialog.show(
+        context,
+        imageBytes: entry.imageBytes,
+        textAnnotation: entry.ocrResult.textAnnotation!,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final textAnnotation = entry.ocrResult.textAnnotation;
+
     return Scaffold(
       appBar: AppBar(title: const Text('Запись истории')),
       body: SingleChildScrollView(
@@ -191,16 +203,63 @@ class HistoryDetailScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (entry.ocrResult.textAnnotation != null)
-              ImageWithOverlay(
-                imageBytes: entry.imageBytes,
-                textAnnotation: entry.ocrResult.textAnnotation!,
-              )
-            else
-              Image.memory(entry.imageBytes, fit: BoxFit.contain),
+            GestureDetector(
+              onTap: textAnnotation != null
+                  ? () => _openImageViewer(context)
+                  : null,
+              child: Container(
+                constraints: const BoxConstraints(maxHeight: 250),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey.shade300, width: 2),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Image.memory(entry.imageBytes, fit: BoxFit.contain),
+                      if (textAnnotation != null)
+                        Positioned(
+                          right: 8,
+                          bottom: 8,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.black54,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.fullscreen,
+                                  color: Colors.white,
+                                  size: 18,
+                                ),
+                                SizedBox(width: 4),
+                                Text(
+                                  'Открыть',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
             const SizedBox(height: 24),
-            if (entry.ocrResult.textAnnotation != null)
-              OcrTextDisplay(textAnnotation: entry.ocrResult.textAnnotation!)
+            if (textAnnotation != null)
+              OcrTextDisplay(textAnnotation: textAnnotation)
             else
               const Text(
                 'Текст не распознан',

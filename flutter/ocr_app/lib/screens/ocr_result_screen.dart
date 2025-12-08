@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../models/ocr_result.dart';
 import '../services/history_service.dart';
-import '../widgets/image_with_overlay.dart';
+import '../widgets/image_viewer_dialog.dart';
 import '../widgets/ocr_text_display.dart';
 
 class ImageWithResult {
@@ -28,8 +28,6 @@ class _OcrResultScreenState extends State<OcrResultScreen> {
   final PageController _pageController = PageController();
   final HistoryService _historyService = HistoryService();
   int _currentPage = 0;
-  bool _showWords = true;
-  bool _showLines = false;
 
   @override
   void initState() {
@@ -48,6 +46,14 @@ class _OcrResultScreenState extends State<OcrResultScreen> {
     }
   }
 
+  void _openImageViewer(Uint8List bytes, OcrTextAnnotation textAnnotation) {
+    ImageViewerDialog.show(
+      context,
+      imageBytes: bytes,
+      textAnnotation: textAnnotation,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -57,33 +63,6 @@ class _OcrResultScreenState extends State<OcrResultScreen> {
               ? 'Результат (${_currentPage + 1}/${widget.images.length})'
               : 'Результат',
         ),
-        actions: [
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.visibility),
-            tooltip: 'Отображение',
-            onSelected: (value) {
-              setState(() {
-                if (value == 'words') {
-                  _showWords = !_showWords;
-                } else if (value == 'lines') {
-                  _showLines = !_showLines;
-                }
-              });
-            },
-            itemBuilder: (context) => [
-              CheckedPopupMenuItem(
-                value: 'words',
-                checked: _showWords,
-                child: const Text('Показать слова'),
-              ),
-              CheckedPopupMenuItem(
-                value: 'lines',
-                checked: _showLines,
-                child: const Text('Показать строки'),
-              ),
-            ],
-          ),
-        ],
       ),
       body: PageView.builder(
         controller: _pageController,
@@ -100,15 +79,7 @@ class _OcrResultScreenState extends State<OcrResultScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                if (result?.textAnnotation != null)
-                  ImageWithOverlay(
-                    imageBytes: image.bytes,
-                    textAnnotation: result!.textAnnotation!,
-                    showWords: _showWords,
-                    showLines: _showLines,
-                  )
-                else
-                  Image.memory(image.bytes, fit: BoxFit.contain),
+                _buildImagePreview(image.bytes, result?.textAnnotation),
                 const SizedBox(height: 24),
                 if (result?.textAnnotation != null)
                   OcrTextDisplay(textAnnotation: result!.textAnnotation!)
@@ -148,6 +119,59 @@ class _OcrResultScreenState extends State<OcrResultScreen> {
               ),
             )
           : null,
+    );
+  }
+
+  Widget _buildImagePreview(
+    Uint8List bytes,
+    OcrTextAnnotation? textAnnotation,
+  ) {
+    return GestureDetector(
+      onTap: textAnnotation != null
+          ? () => _openImageViewer(bytes, textAnnotation)
+          : null,
+      child: Container(
+        constraints: const BoxConstraints(maxHeight: 250),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey.shade300, width: 2),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(10),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Image.memory(bytes, fit: BoxFit.contain),
+              if (textAnnotation != null)
+                Positioned(
+                  right: 8,
+                  bottom: 8,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.black54,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.fullscreen, color: Colors.white, size: 18),
+                        SizedBox(width: 4),
+                        Text(
+                          'Открыть',
+                          style: TextStyle(color: Colors.white, fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
