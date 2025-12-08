@@ -10,4 +10,5 @@ class AppConfig {
   }
 
   static String get ocrYandexEndpoint => '$backendUrl/api/v1/ocr/yandex';
+  static String get ocrGeminiEndpoint => '$backendUrl/api/v1/ocr/gemini';
 }

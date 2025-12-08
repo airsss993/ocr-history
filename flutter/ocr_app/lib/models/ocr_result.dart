@@ -152,18 +152,67 @@ class OcrTextAnnotation {
   }
 }
 
+class GeminiTextResult {
+  final String? summary;
+  final String? language;
+  final String? documentTitle;
+  final String? textMarkdown;
+  final String? notes;
+  final List<String> warnings;
+
+  GeminiTextResult({
+    this.summary,
+    this.language,
+    this.documentTitle,
+    this.textMarkdown,
+    this.notes,
+    this.warnings = const [],
+  });
+
+  factory GeminiTextResult.fromJson(Map<String, dynamic> json) {
+    final warningsList = json['warnings'] as List<dynamic>? ?? [];
+    return GeminiTextResult(
+      summary: json['summary'] as String?,
+      language: json['language'] as String?,
+      documentTitle: json['document_title'] as String?,
+      textMarkdown: json['text_markdown'] as String?,
+      notes: json['notes'] as String?,
+      warnings: warningsList.map((w) => w.toString()).toList(),
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    if (summary != null) 'summary': summary,
+    if (language != null) 'language': language,
+    if (documentTitle != null) 'document_title': documentTitle,
+    if (textMarkdown != null) 'text_markdown': textMarkdown,
+    if (notes != null) 'notes': notes,
+    if (warnings.isNotEmpty) 'warnings': warnings,
+  };
+
+  String get fullText => textMarkdown ?? '';
+}
+
 class OcrImageResult {
   final String filename;
   final OcrTextAnnotation? textAnnotation;
+  final GeminiTextResult? geminiResult;
   final String? error;
 
-  OcrImageResult({required this.filename, this.textAnnotation, this.error});
+  OcrImageResult({
+    required this.filename,
+    this.textAnnotation,
+    this.geminiResult,
+    this.error,
+  });
 
   factory OcrImageResult.fromJson(Map<String, dynamic> json) {
     OcrTextAnnotation? annotation;
+    GeminiTextResult? gemini;
 
     final text = json['text'];
     if (text != null && text is Map<String, dynamic>) {
+      // Check for Yandex format (has result.textAnnotation)
       final result = text['result'] as Map<String, dynamic>?;
       if (result != null) {
         final textAnnotation =
@@ -171,6 +220,10 @@ class OcrImageResult {
         if (textAnnotation != null) {
           annotation = OcrTextAnnotation.fromJson(textAnnotation);
         }
+      }
+      // Check for Gemini format (has text_markdown or summary)
+      if (text.containsKey('text_markdown') || text.containsKey('summary')) {
+        gemini = GeminiTextResult.fromJson(text);
       }
     }
 
@@ -182,6 +235,7 @@ class OcrImageResult {
     return OcrImageResult(
       filename: json['filename'] as String? ?? '',
       textAnnotation: annotation,
+      geminiResult: gemini,
       error: errorStr,
     );
   }
@@ -192,10 +246,24 @@ class OcrImageResult {
       'text': {
         'result': {'textAnnotation': textAnnotation!.toJson()},
       },
+    if (geminiResult != null) 'text': geminiResult!.toJson(),
     if (error != null) 'error': error,
   };
 
-  bool get isSuccess => error == null && textAnnotation != null;
+  bool get isSuccess =>
+      error == null && (textAnnotation != null || geminiResult != null);
+
+  bool get isGemini => geminiResult != null;
+
+  String get fullText {
+    if (textAnnotation != null) {
+      return textAnnotation!.fullText;
+    }
+    if (geminiResult != null) {
+      return geminiResult!.fullText;
+    }
+    return '';
+  }
 }
 
 class OcrApiResponse {

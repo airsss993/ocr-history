@@ -127,7 +127,7 @@ class _HistoryListItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final text = entry.ocrResult.textAnnotation?.fullText ?? '';
+    final text = entry.ocrResult.fullText;
     final preview = text.length > 100 ? '${text.substring(0, 100)}...' : text;
 
     return Dismissible(
@@ -195,6 +195,8 @@ class HistoryDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textAnnotation = entry.ocrResult.textAnnotation;
+    final geminiResult = entry.ocrResult.geminiResult;
+    final hasResult = textAnnotation != null || geminiResult != null;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Запись истории')),
@@ -258,8 +260,11 @@ class HistoryDetailScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 24),
-            if (textAnnotation != null)
-              OcrTextDisplay(textAnnotation: textAnnotation)
+            if (hasResult)
+              OcrTextDisplay(
+                textAnnotation: textAnnotation,
+                geminiResult: geminiResult,
+              )
             else
               const Text(
                 'Текст не распознан',

@@ -5,8 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../services/ocr_service.dart';
+import '../services/settings_service.dart';
 import '../widgets/image_grid_item.dart';
 import '../widgets/loading_overlay.dart';
+import '../widgets/settings_bottom_sheet.dart';
 import 'history_screen.dart';
 import 'ocr_result_screen.dart';
 
@@ -29,7 +31,27 @@ class _PhotoPickerScreenState extends State<PhotoPickerScreen> {
   final List<SelectedImage> _images = [];
   final ImagePicker _picker = ImagePicker();
   final OcrService _ocrService = OcrService();
+  final SettingsService _settingsService = SettingsService();
   bool _isLoading = false;
+  OcrProvider _ocrProvider = OcrProvider.yandex;
+  String? _geminiApiKey;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSettings();
+  }
+
+  Future<void> _loadSettings() async {
+    final provider = await _settingsService.getOcrProvider();
+    final apiKey = await _settingsService.getGeminiApiKey();
+    if (mounted) {
+      setState(() {
+        _ocrProvider = provider;
+        _geminiApiKey = apiKey;
+      });
+    }
+  }
 
   Future<void> _pickFromGallery() async {
     final int remainingSlots = _maxImages - _images.length;
@@ -92,6 +114,14 @@ class _PhotoPickerScreenState extends State<PhotoPickerScreen> {
       return;
     }
 
+    if (_ocrProvider == OcrProvider.gemini &&
+        (_geminiApiKey == null || _geminiApiKey!.isEmpty)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Укажите Gemini API ключ в настройках')),
+      );
+      return;
+    }
+
     setState(() => _isLoading = true);
 
     try {
@@ -99,7 +129,11 @@ class _PhotoPickerScreenState extends State<PhotoPickerScreen> {
           .map((img) => ImageData(bytes: img.bytes, filename: img.filename))
           .toList();
 
-      final response = await _ocrService.recognizeImages(imageDataList);
+      final response = await _ocrService.recognizeImages(
+        imageDataList,
+        provider: _ocrProvider,
+        geminiApiKey: _geminiApiKey,
+      );
 
       if (mounted) {
         final imagesWithResults = <ImageWithResult>[];
@@ -144,6 +178,22 @@ class _PhotoPickerScreenState extends State<PhotoPickerScreen> {
     );
   }
 
+  void _openSettings() {
+    SettingsBottomSheet.show(
+      context,
+      initialProvider: _ocrProvider,
+      initialApiKey: _geminiApiKey,
+      onSave: (provider, apiKey) async {
+        await _settingsService.setOcrProvider(provider);
+        await _settingsService.setGeminiApiKey(apiKey);
+        setState(() {
+          _ocrProvider = provider;
+          _geminiApiKey = apiKey;
+        });
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return LoadingOverlay(
@@ -153,6 +203,11 @@ class _PhotoPickerScreenState extends State<PhotoPickerScreen> {
         appBar: AppBar(
           title: const Text('OCR Hist'),
           actions: [
+            IconButton(
+              icon: const Icon(Icons.settings),
+              tooltip: 'Настройки',
+              onPressed: _openSettings,
+            ),
             IconButton(
               icon: const Icon(Icons.history),
               tooltip: 'История',

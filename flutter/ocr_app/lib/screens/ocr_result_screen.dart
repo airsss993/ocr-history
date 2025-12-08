@@ -81,8 +81,12 @@ class _OcrResultScreenState extends State<OcrResultScreen> {
               children: [
                 _buildImagePreview(image.bytes, result?.textAnnotation),
                 const SizedBox(height: 24),
-                if (result?.textAnnotation != null)
-                  OcrTextDisplay(textAnnotation: result!.textAnnotation!)
+                if (result?.textAnnotation != null ||
+                    result?.geminiResult != null)
+                  OcrTextDisplay(
+                    textAnnotation: result!.textAnnotation,
+                    geminiResult: result.geminiResult,
+                  )
                 else if (result?.error != null)
                   _buildErrorWidget(result!.error!)
                 else

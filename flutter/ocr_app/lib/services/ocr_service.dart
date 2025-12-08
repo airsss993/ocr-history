@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 
 import '../config/app_config.dart';
 import '../models/ocr_result.dart';
+import 'settings_service.dart';
 
 class OcrException implements Exception {
   final String message;
@@ -24,9 +25,24 @@ class ImageData {
 }
 
 class OcrService {
-  Future<OcrApiResponse> recognizeImages(List<ImageData> images) async {
-    final uri = Uri.parse(AppConfig.ocrYandexEndpoint);
+  Future<OcrApiResponse> recognizeImages(
+    List<ImageData> images, {
+    OcrProvider provider = OcrProvider.yandex,
+    String? geminiApiKey,
+  }) async {
+    final endpoint = provider == OcrProvider.gemini
+        ? AppConfig.ocrGeminiEndpoint
+        : AppConfig.ocrYandexEndpoint;
+
+    final uri = Uri.parse(endpoint);
     final request = http.MultipartRequest('POST', uri);
+
+    if (provider == OcrProvider.gemini) {
+      if (geminiApiKey == null || geminiApiKey.isEmpty) {
+        throw OcrException('Gemini API ключ не указан');
+      }
+      request.headers['X-Gemini-API-Key'] = geminiApiKey;
+    }
 
     for (final image in images) {
       final file = http.MultipartFile.fromBytes(
@@ -49,6 +65,8 @@ class OcrService {
     if (response.statusCode == 200) {
       final json = jsonDecode(response.body) as Map<String, dynamic>;
       return OcrApiResponse.fromJson(json);
+    } else if (response.statusCode == 401) {
+      throw OcrException('Неверный API ключ', statusCode: response.statusCode);
     } else {
       try {
         final json = jsonDecode(response.body) as Map<String, dynamic>;
