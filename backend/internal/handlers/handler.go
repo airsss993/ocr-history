@@ -29,6 +29,7 @@ func (h *Handler) Init() *gin.Engine {
 	router.Use(
 		gin.Recovery(),
 		gin.Logger(),
+		middleware.CORS(),
 	)
 
 	router.GET("/health", h.healthCheck)
