@@ -11,6 +11,7 @@ import (
 	"github.com/airsss993/ocr-history/internal/config"
 	"github.com/airsss993/ocr-history/internal/handlers"
 	"github.com/airsss993/ocr-history/internal/server"
+	"github.com/airsss993/ocr-history/internal/storage"
 	"github.com/airsss993/ocr-history/pkg/logger"
 )
 
@@ -38,7 +39,10 @@ func Run() {
 
 	logger.Info(fmt.Sprintf("Yandex Model: %s", cfg.OCR.YandexModel))
 
-	handler := handlers.NewHandler(cfg)
+	historyStorage := storage.NewHistoryStorage(12 * time.Hour)
+	logger.Info("History storage initialized (TTL: 12 hours)")
+
+	handler := handlers.NewHandler(cfg, historyStorage)
 
 	router := handler.Init()
 

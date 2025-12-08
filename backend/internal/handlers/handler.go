@@ -1,25 +1,31 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
+	"time"
 
 	"github.com/airsss993/ocr-history/internal/config"
 	"github.com/airsss993/ocr-history/internal/domain"
 	"github.com/airsss993/ocr-history/internal/middleware"
 	"github.com/airsss993/ocr-history/internal/repository"
 	"github.com/airsss993/ocr-history/internal/services"
+	"github.com/airsss993/ocr-history/internal/storage"
 	"github.com/airsss993/ocr-history/pkg/logger"
 	"github.com/gin-gonic/gin"
 )
 
 type Handler struct {
-	cfg *config.Config
+	cfg            *config.Config
+	historyStorage *storage.HistoryStorage
 }
 
-func NewHandler(cfg *config.Config) *Handler {
+func NewHandler(cfg *config.Config, historyStorage *storage.HistoryStorage) *Handler {
 	return &Handler{
-		cfg: cfg,
+		cfg:            cfg,
+		historyStorage: historyStorage,
 	}
 }
 
@@ -41,6 +47,11 @@ func (h *Handler) Init() *gin.Engine {
 	{
 		api.POST("/ocr/gemini", h.handleGeminiOCR)
 		api.POST("/ocr/yandex", h.handleYandexOCR)
+
+		api.GET("/history", h.handleGetHistory)
+		api.POST("/history", h.handleAddHistory)
+		api.DELETE("/history/:id", h.handleDeleteHistoryEntry)
+		api.DELETE("/history", h.handleClearHistory)
 	}
 
 	return router
@@ -167,4 +178,97 @@ func (h *Handler) handleYandexOCR(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, response)
+}
+
+func (h *Handler) getClientID(c *gin.Context) string {
+	return c.GetHeader("X-Client-ID")
+}
+
+func (h *Handler) handleGetHistory(c *gin.Context) {
+	clientID := h.getClientID(c)
+	if clientID == "" {
+		c.JSON(http.StatusBadRequest, domain.ErrorResponse{
+			Error:   "validation_error",
+			Message: "X-Client-ID header is required",
+		})
+		return
+	}
+
+	entries := h.historyStorage.Get(clientID)
+	c.JSON(http.StatusOK, gin.H{
+		"entries": entries,
+	})
+}
+
+type AddHistoryRequest struct {
+	ImageBase64 string          `json:"imageBase64"`
+	OcrResult   json.RawMessage `json:"ocrResult"`
+}
+
+func (h *Handler) handleAddHistory(c *gin.Context) {
+	clientID := h.getClientID(c)
+	if clientID == "" {
+		c.JSON(http.StatusBadRequest, domain.ErrorResponse{
+			Error:   "validation_error",
+			Message: "X-Client-ID header is required",
+		})
+		return
+	}
+
+	var req AddHistoryRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, domain.ErrorResponse{
+			Error:   "validation_error",
+			Message: "invalid request body",
+		})
+		return
+	}
+
+	entry := storage.HistoryEntry{
+		ID:          strconv.FormatInt(time.Now().UnixNano(), 10),
+		ImageBase64: req.ImageBase64,
+		OcrResult:   req.OcrResult,
+		CreatedAt:   time.Now(),
+	}
+
+	h.historyStorage.Add(clientID, entry)
+
+	c.JSON(http.StatusOK, gin.H{
+		"entry": entry,
+	})
+}
+
+func (h *Handler) handleDeleteHistoryEntry(c *gin.Context) {
+	clientID := h.getClientID(c)
+	if clientID == "" {
+		c.JSON(http.StatusBadRequest, domain.ErrorResponse{
+			Error:   "validation_error",
+			Message: "X-Client-ID header is required",
+		})
+		return
+	}
+
+	entryID := c.Param("id")
+	deleted := h.historyStorage.Delete(clientID, entryID)
+
+	c.JSON(http.StatusOK, gin.H{
+		"deleted": deleted,
+	})
+}
+
+func (h *Handler) handleClearHistory(c *gin.Context) {
+	clientID := h.getClientID(c)
+	if clientID == "" {
+		c.JSON(http.StatusBadRequest, domain.ErrorResponse{
+			Error:   "validation_error",
+			Message: "X-Client-ID header is required",
+		})
+		return
+	}
+
+	h.historyStorage.Clear(clientID)
+
+	c.JSON(http.StatusOK, gin.H{
+		"cleared": true,
+	})
 }
