@@ -2,7 +2,9 @@ package repository
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"log"
 	"strings"
 
 	"github.com/airsss993/ocr-history/pkg/logger"
@@ -34,7 +36,7 @@ func (r *GeminiRepository) RecognizeFromBytes(data []byte) (string, error) {
 	ctx := context.Background()
 
 	if r.apiKey == "" {
-		err := fmt.Errorf("Gemini API key is empty")
+		err := fmt.Errorf("gemini API key is empty")
 		logger.Error(err)
 		return "", err
 	}
@@ -74,11 +76,82 @@ func (r *GeminiRepository) RecognizeFromBytes(data []byte) (string, error) {
 	}
 
 	config := &genai.GenerateContentConfig{
-		Temperature: genai.Ptr[float32](0),
+		Temperature: genai.Ptr[float32](0.3),
 		TopP:        genai.Ptr[float32](1),
+		ThinkingConfig: &genai.ThinkingConfig{
+			ThinkingBudget: genai.Ptr[int32](16000),
+		},
+		MediaResolution:  genai.MediaResolutionHigh,
+		ResponseMIMEType: "application/json",
+		ResponseSchema: func() *genai.Schema {
+			schemaJSON := `{
+				"type": "object",
+				"properties": {
+					"summary": {
+						"type": "string",
+						"description": "Короткое саммари документа (2–4 предложения). Без выдумок: только по факту распознанного."
+					},
+					"language": {
+						"type": "string",
+						"description": "Язык распознанного документа. Для этой задачи всегда 'ru'.",
+						"enum": ["ru"]
+					},
+					"document_title": {
+						"type": "string",
+						"description": "Заголовок документа, если есть. Если нет — пустая строка."
+					},
+					"text_markdown": {
+						"type": "string",
+						"description": "Полный распознанный текст всего документа в Markdown (включая таблицы в Markdown)."
+					},
+					"notes": {
+						"type": "string",
+						"description": "Заметки о сомнительных местах. Если нет — пустая строка."
+					},
+					"warnings": {
+						"type": "array",
+						"description": "Общие предупреждения (например, плохое качество, часть текста неразборчива).",
+						"items": {
+							"type": "string"
+						}
+					}
+				},
+				"required": ["summary", "language", "document_title", "text_markdown", "notes", "warnings"],
+				"propertyOrdering": ["summary", "language", "document_title", "text_markdown", "notes", "warnings"]
+			}`
+			var schema genai.Schema
+			if err := json.Unmarshal([]byte(schemaJSON), &schema); err != nil {
+				log.Fatal(err)
+			}
+			return &schema
+		}(),
 		SystemInstruction: &genai.Content{
 			Parts: []*genai.Part{
-				genai.NewPartFromText("Ты - специалист по оцифровке документов.\n\nЗАДАЧА: Верни весь текст документа.\n\nФОРМАТ ОТВЕТА:\nВыведи весь распознанный текст в формате Markdown.\n\nВАЖНО:\n- Документ может содержать рукописный текст.\n- Документ на русском языке.\n- Внимательно оформляй таблицы, чтобы они были в формате Markdown. Сохраняй исходную структуру таблиц."),
+				genai.NewPartFromText(`Ты — специалист по оцифровке старинных документов (архивные бумаги, рукописи, дореформенная орфография, бледные чернила, пятна, разрывы). Твоя задача — извлечь весь видимый текст с фотографии и вернуть его строго в JSON, соответствующий указанной схеме.
+
+Правила распознавания
+	1.	Не выдумывай отсутствующий текст. Если символ/слово не читается — помечай это в notes и/или warnings.
+	2.	Сохраняй орфографию оригинала (включая дореформенные буквы/написания), как на документе.
+	•	Если уверен — пиши как есть.
+	•	Если сомневаешься — используй маркеры:
+	•	⟦неразборчиво⟧
+	•	⟦возможн.: ...⟧ (1–3 варианта)
+	3.	Сохраняй структуру: переносы строк, абзацы, заголовки, нумерацию, списки.
+	4.	Таблицы: если видна таблица — оформляй в Markdown-таблицу. Если границы колонок сомнительны — всё равно делай таблицу и добавляй предупреждение.
+	5.	Отмечай специальные элементы:
+	•	подпись: помечай строкой *[Подпись]*: ... (если читается) или *[Подпись]*: ⟦неразборчиво⟧
+	•	печать/штамп: *[Печать]*: ... или *[Печать]*: ⟦текст неразборчиво⟧
+	6.	Если на фото несколько фрагментов/страниц — распознавай всё подряд, разделяя в text_markdown заметными разделителями ---.
+
+Формат ответа
+	•	Верни только валидный JSON
+	•	Поля заполняй в таком смысле:
+	•	summary: 2–4 предложения по факту того, что реально видно в тексте (тип документа, даты/место/лица, если читается).
+	•	document_title: заголовок/шапка, если есть, иначе пустая строка.
+	•	text_markdown: полный текст документа в Markdown.
+	•	notes: сомнения/варианты чтения, где именно проблемы (например: "строка 3 сверху, правый край обрезан").
+	•	warnings: список коротких предупреждений (качество, засвет, наклон, обрезано, размыто, курсив/скоропись, дореформенная орфография и т.д.).
+`),
 			},
 		},
 	}
