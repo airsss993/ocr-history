@@ -1,14 +1,14 @@
-import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 
 class ImageGridItem extends StatelessWidget {
-  final File imageFile;
+  final Uint8List imageBytes;
   final VoidCallback onRemove;
 
   const ImageGridItem({
     super.key,
-    required this.imageFile,
+    required this.imageBytes,
     required this.onRemove,
   });
 
@@ -19,7 +19,7 @@ class ImageGridItem extends StatelessWidget {
       children: [
         ClipRRect(
           borderRadius: BorderRadius.circular(8),
-          child: Image.file(imageFile, fit: BoxFit.cover),
+          child: Image.memory(imageBytes, fit: BoxFit.cover),
         ),
         Positioned(
           top: 4,
