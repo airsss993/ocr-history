@@ -7,7 +7,7 @@ server:
   idleTimeout: 240s
 
 workers:
-  maxWorkers: 20
+  maxWorkers: 30
 
 ocr:
   provider: "yandex"

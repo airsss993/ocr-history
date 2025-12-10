@@ -122,3 +122,4 @@ app.*.symbols
 /.idea
 *.json
 backend/.env
+.DS_Store

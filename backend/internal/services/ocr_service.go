@@ -104,7 +104,7 @@ func (s *OCRService) processImage(file *multipart.FileHeader, maxSizeMB int, sup
 		result.Text = json.RawMessage(text)
 	} else {
 		textJSON, _ := json.Marshal(text)
-		result.Text = json.RawMessage(textJSON)
+		result.Text = textJSON
 	}
 
 	return result
