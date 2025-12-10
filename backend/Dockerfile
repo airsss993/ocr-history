@@ -1,5 +1,5 @@
 ARG GO_VERSION=1.25.5
-FROM golang:${GO_VERSION}-bookworm AS builder
+FROM golang:${GO_VERSION}-alpine AS builder
 
 WORKDIR /app
 
@@ -12,13 +12,9 @@ ENV CGO_ENABLED=0
 
 RUN go build -o ocr-backend ./cmd/app
 
-FROM debian:bookworm-slim
+FROM gcr.io/distroless/base-debian12
 
 WORKDIR /app
-
-RUN apt-get update && apt-get install -y \
-    ca-certificates \
-    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /app/ocr-backend ./ocr-backend
 COPY --from=builder /app/configs ./configs
