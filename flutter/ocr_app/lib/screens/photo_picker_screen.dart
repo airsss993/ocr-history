@@ -28,6 +28,7 @@ class PhotoPickerScreen extends StatefulWidget {
 
 class _PhotoPickerScreenState extends State<PhotoPickerScreen> {
   static const int _maxImages = 10;
+  static const List<String> _supportedFormats = ['png', 'jpg', 'jpeg', 'webp'];
   final List<SelectedImage> _images = [];
   final ImagePicker _picker = ImagePicker();
   final OcrService _ocrService = OcrService();
@@ -53,6 +54,11 @@ class _PhotoPickerScreenState extends State<PhotoPickerScreen> {
     }
   }
 
+  bool _isSupportedFormat(String filename) {
+    final ext = filename.split('.').last.toLowerCase();
+    return _supportedFormats.contains(ext);
+  }
+
   Future<void> _pickFromGallery() async {
     final int remainingSlots = _maxImages - _images.length;
     if (remainingSlots <= 0) {
@@ -64,15 +70,26 @@ class _PhotoPickerScreenState extends State<PhotoPickerScreen> {
     if (pickedFiles.isNotEmpty) {
       final filesToAdd = pickedFiles.take(remainingSlots).toList();
       final newImages = <SelectedImage>[];
+      final skippedFiles = <String>[];
 
       for (final xFile in filesToAdd) {
-        final bytes = await xFile.readAsBytes();
-        newImages.add(SelectedImage(bytes: bytes, filename: xFile.name));
+        if (_isSupportedFormat(xFile.name)) {
+          final bytes = await xFile.readAsBytes();
+          newImages.add(SelectedImage(bytes: bytes, filename: xFile.name));
+        } else {
+          skippedFiles.add(xFile.name);
+        }
       }
 
-      setState(() {
-        _images.addAll(newImages);
-      });
+      if (skippedFiles.isNotEmpty) {
+        _showUnsupportedFormatMessage(skippedFiles);
+      }
+
+      if (newImages.isNotEmpty) {
+        setState(() {
+          _images.addAll(newImages);
+        });
+      }
     }
   }
 
@@ -84,6 +101,10 @@ class _PhotoPickerScreenState extends State<PhotoPickerScreen> {
 
     final XFile? photo = await _picker.pickImage(source: ImageSource.camera);
     if (photo != null) {
+      if (!_isSupportedFormat(photo.name)) {
+        _showUnsupportedFormatMessage([photo.name]);
+        return;
+      }
       final bytes = await photo.readAsBytes();
       setState(() {
         _images.add(SelectedImage(bytes: bytes, filename: photo.name));
@@ -103,6 +124,16 @@ class _PhotoPickerScreenState extends State<PhotoPickerScreen> {
         content: Text('Достигнут лимит в 10 фотографий'),
         duration: Duration(seconds: 2),
       ),
+    );
+  }
+
+  void _showUnsupportedFormatMessage(List<String> files) {
+    final formats = _supportedFormats.join(', ');
+    final message = files.length == 1
+        ? 'Файл ${files.first} пропущен. Поддерживаются: $formats'
+        : 'Пропущено ${files.length} файлов. Поддерживаются: $formats';
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), duration: const Duration(seconds: 3)),
     );
   }
 
