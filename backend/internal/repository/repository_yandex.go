@@ -2,29 +2,43 @@ package repository
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 
+	"github.com/airsss993/ocr-history/internal/ratelimiter"
 	"github.com/airsss993/ocr-history/pkg/logger"
 )
 
+const (
+	yandexSyncOCREndpoint = "https://ocr.api.cloud.yandex.net/ocr/v1/recognizeText"
+)
+
 type YandexOCRRepository struct {
-	apiKey   string
-	folderID string
-	model    string // "page" для печатного текста, "handwritten" для рукописного
+	apiKey      string
+	folderID    string
+	model       string
+	rateLimiter *ratelimiter.YandexRateLimiter
+	client      *http.Client
 }
 
-func NewYandexOCRRepository(apiKey, folderID, model string) *YandexOCRRepository {
+func NewYandexOCRRepository(
+	apiKey, folderID, model string,
+	rateLimiter *ratelimiter.YandexRateLimiter,
+) *YandexOCRRepository {
 	if model == "" {
-		model = "page" // По умолчанию используем модель для печатного текста
+		model = "page"
 	}
 	return &YandexOCRRepository{
-		apiKey:   apiKey,
-		folderID: folderID,
-		model:    model,
+		apiKey:      apiKey,
+		folderID:    folderID,
+		model:       model,
+		rateLimiter: rateLimiter,
+		client:      &http.Client{Timeout: 240 * time.Second},
 	}
 }
 
@@ -104,19 +118,24 @@ func (r *YandexOCRRepository) RecognizeFromBytes(data []byte) (string, error) {
 		return "", err
 	}
 
-	// Кодируем изображение в base64
+	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+	defer cancel()
+
+	if err := r.rateLimiter.Acquire(ctx); err != nil {
+		err := fmt.Errorf("rate limiter timeout: %w", err)
+		logger.Error(err)
+		return "", err
+	}
+
 	encodedImage := base64.StdEncoding.EncodeToString(data)
 
-	// Определяем MIME тип (по умолчанию JPEG, можно улучшить определение)
 	mimeType := "JPEG"
 	if len(data) > 4 {
-		// PNG signature: 89 50 4E 47
 		if data[0] == 0x89 && data[1] == 0x50 && data[2] == 0x4E && data[3] == 0x47 {
 			mimeType = "PNG"
 		}
 	}
 
-	// Формируем запрос к Yandex OCR API
 	reqBody := yandexOCRRequest{
 		MimeType:      mimeType,
 		LanguageCodes: []string{"ru", "en"},
@@ -131,10 +150,9 @@ func (r *YandexOCRRepository) RecognizeFromBytes(data []byte) (string, error) {
 		return "", err
 	}
 
-	// Создаем HTTP запрос
 	req, err := http.NewRequest(
 		"POST",
-		"https://ocr.api.cloud.yandex.net/ocr/v1/recognizeText",
+		yandexSyncOCREndpoint,
 		bytes.NewBuffer(jsonData),
 	)
 	if err != nil {
@@ -143,15 +161,12 @@ func (r *YandexOCRRepository) RecognizeFromBytes(data []byte) (string, error) {
 		return "", err
 	}
 
-	// Устанавливаем заголовки
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", r.apiKey))
 	req.Header.Set("x-folder-id", r.folderID)
 	req.Header.Set("x-data-logging-enabled", "false")
 
-	// Отправляем запрос
-	client := &http.Client{}
-	resp, err := client.Do(req)
+	resp, err := r.client.Do(req)
 	if err != nil {
 		err := fmt.Errorf("failed to send request: %w", err)
 		logger.Error(err)
@@ -159,7 +174,6 @@ func (r *YandexOCRRepository) RecognizeFromBytes(data []byte) (string, error) {
 	}
 	defer resp.Body.Close()
 
-	// Читаем ответ
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		err := fmt.Errorf("failed to read response: %w", err)
@@ -167,9 +181,7 @@ func (r *YandexOCRRepository) RecognizeFromBytes(data []byte) (string, error) {
 		return "", err
 	}
 
-	// Проверяем статус код
 	if resp.StatusCode != http.StatusOK {
-		// Пытаемся распарсить ошибку
 		var apiError yandexError
 		if json.Unmarshal(body, &apiError) == nil && apiError.Message != "" {
 			err := fmt.Errorf("yandex API error (status %d): %s", resp.StatusCode, apiError.Message)
@@ -181,7 +193,6 @@ func (r *YandexOCRRepository) RecognizeFromBytes(data []byte) (string, error) {
 		return "", err
 	}
 
-	// Парсим ответ для проверки
 	var ocrResp yandexOCRResponse
 	if err := json.Unmarshal(body, &ocrResp); err != nil {
 		err := fmt.Errorf("failed to unmarshal response: %w", err)
@@ -189,12 +200,10 @@ func (r *YandexOCRRepository) RecognizeFromBytes(data []byte) (string, error) {
 		return "", err
 	}
 
-	// Проверяем наличие результата
 	if ocrResp.Result == nil || ocrResp.Result.TextAnnotation == nil {
 		logger.Warn("empty result from Yandex OCR API")
 		return "", nil
 	}
 
-	// Возвращаем полный JSON ответ от Yandex
 	return string(body), nil
 }

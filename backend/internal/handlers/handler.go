@@ -10,6 +10,7 @@ import (
 	"github.com/airsss993/ocr-history/internal/config"
 	"github.com/airsss993/ocr-history/internal/domain"
 	"github.com/airsss993/ocr-history/internal/middleware"
+	"github.com/airsss993/ocr-history/internal/ratelimiter"
 	"github.com/airsss993/ocr-history/internal/repository"
 	"github.com/airsss993/ocr-history/internal/services"
 	"github.com/airsss993/ocr-history/internal/storage"
@@ -18,14 +19,27 @@ import (
 )
 
 type Handler struct {
-	cfg            *config.Config
-	historyStorage *storage.HistoryStorage
+	cfg               *config.Config
+	historyStorage    *storage.HistoryStorage
+	yandexRateLimiter *ratelimiter.YandexRateLimiter
+	yandexRepo        *repository.YandexOCRRepository
 }
 
 func NewHandler(cfg *config.Config, historyStorage *storage.HistoryStorage) *Handler {
+	yandexRL := ratelimiter.NewYandexRateLimiter(cfg.OCR.YandexRequestsPerSec)
+
+	yandexRepo := repository.NewYandexOCRRepository(
+		cfg.OCR.YandexAPIKey,
+		cfg.OCR.YandexFolderID,
+		cfg.OCR.YandexModel,
+		yandexRL,
+	)
+
 	return &Handler{
-		cfg:            cfg,
-		historyStorage: historyStorage,
+		cfg:               cfg,
+		historyStorage:    historyStorage,
+		yandexRateLimiter: yandexRL,
+		yandexRepo:        yandexRepo,
 	}
 }
 
@@ -154,13 +168,7 @@ func (h *Handler) handleYandexOCR(c *gin.Context) {
 		return
 	}
 
-	// Создаем Yandex репозиторий с конфигурацией
-	yandexRepo := repository.NewYandexOCRRepository(
-		h.cfg.OCR.YandexAPIKey,
-		h.cfg.OCR.YandexFolderID,
-		h.cfg.OCR.YandexModel,
-	)
-	yandexService := services.NewOCRService(yandexRepo, h.cfg.Workers.MaxWorkers)
+	yandexService := services.NewOCRService(h.yandexRepo, h.cfg.Workers.MaxWorkers)
 
 	// Обрабатываем изображения
 	response, err := yandexService.ProcessImages(

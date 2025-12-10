@@ -38,7 +38,8 @@ type (
 		Languages             []string `mapstructure:"languages"`
 		YandexAPIKey          string   `mapstructure:"yandexApiKey"`
 		YandexFolderID        string   `mapstructure:"yandexFolderId"`
-		YandexModel           string   `mapstructure:"yandexModel"` // "page" или "handwritten"
+		YandexModel           string   `mapstructure:"yandexModel"`          // "page" или "handwritten"
+		YandexRequestsPerSec  int      `mapstructure:"yandexRequestsPerSec"` // лимит запросов в секунду (default: 1)
 		GoogleCredentialsPath string   `mapstructure:"googleCredentialsPath"`
 		GeminiAPIKey          string   `mapstructure:"geminiApiKey"`
 		GeminiAuthKey         string   `mapstructure:"geminiAuthKey"`
@@ -93,6 +94,13 @@ func Init() (*Config, error) {
 	if proxyURL := viper.GetString("GEMINI_PROXY_URL"); proxyURL != "" {
 		cfg.OCR.GeminiProxyURL = proxyURL
 	}
+	if model := viper.GetString("YANDEX_MODEL"); model != "" {
+		cfg.OCR.YandexModel = model
+	}
+
+	if cfg.OCR.YandexRequestsPerSec <= 0 {
+		cfg.OCR.YandexRequestsPerSec = 1 // Yandex sync API limit: 1 req/sec
+	}
 
 	return &cfg, nil
 }
@@ -106,6 +114,7 @@ func parseConfigFile(folder string) error {
 	viper.BindEnv("OCR_PROVIDER")
 	viper.BindEnv("YANDEX_API_KEY")
 	viper.BindEnv("YANDEX_FOLDER_ID")
+	viper.BindEnv("YANDEX_MODEL")
 	viper.BindEnv("GOOGLE_CREDENTIALS_PATH")
 	viper.BindEnv("GEMINI_API_KEY")
 	viper.BindEnv("GEMINI_AUTH_KEY")

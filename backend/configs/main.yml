@@ -18,7 +18,8 @@ ocr:
 
   yandexApiKey: ""
   yandexFolderId: ""
-  yandexModel: "page"
+  yandexModel: "handwritten"
+  yandexRequestsPerSec: 1     # Yandex sync API limit (max 1 req/sec)
 
   googleCredentialsPath: "./google-credentials.json"
 
