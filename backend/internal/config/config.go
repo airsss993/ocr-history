@@ -43,6 +43,7 @@ type (
 		GeminiAPIKey          string   `mapstructure:"geminiApiKey"`
 		GeminiAuthKey         string   `mapstructure:"geminiAuthKey"`
 		GeminiModel           string   `mapstructure:"geminiModel"` // "gemini-2.0-flash-exp", "gemini-1.5-pro" и т.д.
+		GeminiProxyURL        string   `mapstructure:"geminiProxyUrl"`
 	}
 
 	RateLimit struct {
@@ -89,6 +90,9 @@ func Init() (*Config, error) {
 	if model := viper.GetString("GEMINI_MODEL"); model != "" {
 		cfg.OCR.GeminiModel = model
 	}
+	if proxyURL := viper.GetString("GEMINI_PROXY_URL"); proxyURL != "" {
+		cfg.OCR.GeminiProxyURL = proxyURL
+	}
 
 	return &cfg, nil
 }
@@ -106,6 +110,7 @@ func parseConfigFile(folder string) error {
 	viper.BindEnv("GEMINI_API_KEY")
 	viper.BindEnv("GEMINI_AUTH_KEY")
 	viper.BindEnv("GEMINI_MODEL")
+	viper.BindEnv("GEMINI_PROXY_URL")
 
 	viper.AutomaticEnv()
 

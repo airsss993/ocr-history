@@ -12,7 +12,7 @@ ENV CGO_ENABLED=0
 
 RUN go build -o ocr-backend ./cmd/app
 
-FROM gcr.io/distroless/base-debian12
+FROM gcr.io/distroless/static-debian12
 
 WORKDIR /app
 

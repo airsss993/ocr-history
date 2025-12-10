@@ -105,7 +105,7 @@ func (h *Handler) handleGeminiOCR(c *gin.Context) {
 		return
 	}
 
-	geminiRepo := repository.NewGeminiRepository(h.cfg.OCR.GeminiAPIKey, h.cfg.OCR.GeminiModel)
+	geminiRepo := repository.NewGeminiRepository(h.cfg.OCR.GeminiAPIKey, h.cfg.OCR.GeminiModel, h.cfg.OCR.GeminiProxyURL)
 	geminiService := services.NewOCRService(geminiRepo, h.cfg.Workers.MaxWorkers)
 
 	// Обрабатываем изображения

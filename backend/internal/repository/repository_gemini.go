@@ -2,9 +2,12 @@ package repository
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"log"
+	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/airsss993/ocr-history/pkg/logger"
@@ -12,17 +15,19 @@ import (
 )
 
 type GeminiRepository struct {
-	apiKey string
-	model  string
+	apiKey   string
+	model    string
+	proxyURL string
 }
 
-func NewGeminiRepository(apiKey, model string) *GeminiRepository {
+func NewGeminiRepository(apiKey, model, proxyURL string) *GeminiRepository {
 	if model == "" {
 		model = "gemini-3-pro-preview"
 	}
 	return &GeminiRepository{
-		apiKey: apiKey,
-		model:  model,
+		apiKey:   apiKey,
+		model:    model,
+		proxyURL: proxyURL,
 	}
 }
 
@@ -41,9 +46,31 @@ func (r *GeminiRepository) RecognizeFromBytes(data []byte) (string, error) {
 		return "", err
 	}
 
-	client, err := genai.NewClient(ctx, &genai.ClientConfig{
+	clientConfig := &genai.ClientConfig{
 		APIKey: r.apiKey,
-	})
+	}
+
+	if r.proxyURL != "" {
+		proxyURL, err := url.Parse(r.proxyURL)
+		if err != nil {
+			err := fmt.Errorf("failed to parse proxy URL: %w", err)
+			logger.Error(err)
+			return "", err
+		}
+
+		transport := &http.Transport{
+			Proxy: http.ProxyURL(proxyURL),
+			TLSClientConfig: &tls.Config{
+				MinVersion: tls.VersionTLS12,
+			},
+		}
+
+		clientConfig.HTTPClient = &http.Client{
+			Transport: transport,
+		}
+	}
+
+	client, err := genai.NewClient(ctx, clientConfig)
 	if err != nil {
 		err := fmt.Errorf("failed to create Gemini client: %w", err)
 		logger.Error(err)
